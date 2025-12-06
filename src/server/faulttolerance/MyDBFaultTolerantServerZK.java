@@ -11,6 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
+
+import edu.umass.cs.nio.nioutils.NodeConfigUtils;
+import edu.umass.cs.utils.Util;
 import org.apache.zookeeper.*;
 import org.apache.zookeeper.data.Stat;
 import server.ReplicatedServer;
@@ -393,4 +396,21 @@ public class MyDBFaultTolerantServerZK extends server.MyDBSingleServer {
 
     System.out.println("Server " + myID + " closed");
   }
+
+    public static void main(String[] args) throws IOException {
+        if (args.length < 2) {
+            System.err.println(
+                    "Usage: java MyDBFaultTolerantServerZK <server.properties> <myID>"
+                            + " [<cassandra_host:port>]");
+            System.exit(1);
+        }
+
+        new MyDBFaultTolerantServerZK(
+                NodeConfigUtils.getNodeConfigFromFile(
+                        args[0], ReplicatedServer.SERVER_PREFIX, ReplicatedServer.SERVER_PORT_OFFSET),
+                args[1],
+                args.length > 2
+                        ? Util.getInetSocketAddressFromString(args[2])
+                        : new InetSocketAddress("localhost", 9042));
+    }
 }
