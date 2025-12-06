@@ -105,10 +105,11 @@ public class MyDBReplicableAppGP implements Replicable {
 
   @Override
   public boolean execute(Request request) {
-    if (!(request instanceof RequestPacket packet)) {
+    if (!(request instanceof RequestPacket)) {
       System.err.println("Not a RequestPacket: " + request.getClass());
       return false;
     }
+    RequestPacket packet = (RequestPacket) request;
 
     String requestId = String.valueOf(packet.getRequestID());
 
