@@ -11,6 +11,8 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 import org.json.JSONObject;
 
 public class MyDBReplicableAppGP implements Replicable {
@@ -232,18 +234,26 @@ public class MyDBReplicableAppGP implements Replicable {
       ObjectOutputStream oos = new ObjectOutputStream(baos);
       oos.writeObject(state);
       oos.close();
+      byte[] serialized = baos.toByteArray();
 
-      String checkpointStr = Base64.getEncoder().encodeToString(baos.toByteArray());
+      ByteArrayOutputStream compressedBaos = new ByteArrayOutputStream();
+      GZIPOutputStream gzos = new GZIPOutputStream(compressedBaos);
+      gzos.write(serialized);
+      gzos.close();
+      byte[] compressed = compressedBaos.toByteArray();
 
-      System.out.println("✓ Checkpoint created with:");
+      String checkpointStr = Base64.getEncoder().encodeToString(compressed);
+
+      System.out.println("Checkpoint created with:");
       System.out.println("  - " + state.executedRequestIds.size() + " executed requests");
       System.out.println("  - " + state.databaseState.size() + " database rows");
       System.out.println("  - Latest seq: " + state.latestExecutedSeq);
+      System.out.println("  - Compressed length: " + compressed.length + " bytes");
 
       return checkpointStr;
 
     } catch (Exception e) {
-      System.err.println("✗ Error creating checkpoint: " + e.getMessage());
+      System.err.println("Error creating checkpoint: " + e.getMessage());
       e.printStackTrace();
       return "";
     }
@@ -311,10 +321,11 @@ public class MyDBReplicableAppGP implements Replicable {
     }
 
     try {
+      byte[] compressed = Base64.getDecoder().decode(checkpointState);
 
-      byte[] decoded = Base64.getDecoder().decode(checkpointState);
-      ByteArrayInputStream bais = new ByteArrayInputStream(decoded);
-      ObjectInputStream ois = new ObjectInputStream(bais);
+      ByteArrayInputStream bais = new ByteArrayInputStream(compressed);
+      GZIPInputStream gzis = new GZIPInputStream(bais);
+      ObjectInputStream ois = new ObjectInputStream(gzis);
       CheckpointState state = (CheckpointState) ois.readObject();
       ois.close();
 
